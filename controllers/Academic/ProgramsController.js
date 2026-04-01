@@ -6,8 +6,8 @@ const { sendSuccess } = require('../../utils/response');
 
 
 exports.createProgram = asyncHandler(async (req, res, next) => {
-  const { name, description, } = req.body;
-  const createdBy = req.user.id
+  const { name, description, duration, code, teachers, students, subjects } = req.body;
+  const createdBy = req.user.id;
   //check if exists
   const programFound = await Program.findOne({ name });
   if (programFound) {
@@ -17,7 +17,12 @@ exports.createProgram = asyncHandler(async (req, res, next) => {
   const programCreated = await Program.create({
     name,
     description,
-    createdBy
+    duration: duration ?? '4 years',
+    ...(code != null && code !== '' ? { code } : {}),
+    createdBy,
+    teachers: teachers ?? [],
+    students: students ?? [],
+    subjects: subjects ?? [],
   });
   //push program into admin
   const admin = await Admin.findById(createdBy);
@@ -48,17 +53,20 @@ exports.getProgram = asyncHandler(async (req, res, next) => {
 
 exports.updateProgram = asyncHandler(async (req, res, next) => {
   const { name, description } = req.body;
-  //check name exists
-  const programFound = await Program.findOne({ name });
-  if (programFound) {
-    return next(new AppError("Program  already exists"))
+  if (name) {
+    const programFound = await Program.findOne({
+      name,
+      _id: { $ne: req.params.id },
+    });
+    if (programFound) {
+      return next(new AppError("Program  already exists"))
+    }
   }
   const program = await Program.findByIdAndUpdate(
     req.params.id,
     {
       name,
       description,
-      createdBy: req.user.id,
     },
     {
       new: true,

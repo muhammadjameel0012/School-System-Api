@@ -5,15 +5,23 @@ const Admin = require('../../models/Staff/Admin');
 const { sendSuccess } = require('../../utils/response');
 
 exports.CreateAcademicYear = asyncHandler(async (req, res, next) => {
-  const { name, fromYear, toYear } = req.body
-  const createdBy = req.user.id
+  const { name, fromYear, toYear, isCurrent, students, teachers } = req.body;
+  const createdBy = req.user.id;
 
-  const academicYearFound = await AcademicYear.findOne({ name })
+  const academicYearFound = await AcademicYear.findOne({ name });
   if (academicYearFound) {
-    return next(new AppError("Academic year already exist!", 400))
+    return next(new AppError("Academic year already exist!", 400));
   }
 
-  const newAcademicYear = await AcademicYear.create({ name, fromYear, toYear, createdBy })
+  const newAcademicYear = await AcademicYear.create({
+    name,
+    fromYear,
+    toYear,
+    isCurrent: isCurrent ?? false,
+    createdBy,
+    students: students ?? [],
+    teachers: teachers ?? [],
+  });
 
   const admin = await Admin.findById(createdBy)
   admin.academicYears.push(newAcademicYear.id)
@@ -41,16 +49,24 @@ exports.getAcademicYear = asyncHandler(async (req, res, next) => {
 });
 
 exports.updateAcademicYear = asyncHandler(async (req, res, next) => {
-  const { name, fromYear, toYear } = req.body
-  const createdBy = req.user.id
+  const { name, fromYear, toYear } = req.body;
 
-  //Avoid changing name to existing academic year
-  const academicYearFound = await AcademicYear.findOne({ name })
-  if (academicYearFound) {
-    return next(new AppError("Academic year already exist!", 400))
+  // Avoid changing name to existing academic year (exclude current document)
+  if (name) {
+    const academicYearFound = await AcademicYear.findOne({
+      name,
+      _id: { $ne: req.params.id },
+    });
+    if (academicYearFound) {
+      return next(new AppError("Academic year already exist!", 400));
+    }
   }
 
-  const updatedAcademicYear = await AcademicYear.findByIdAndUpdate(req.params.id, { name, fromYear, toYear, createdBy }, { new: true, runValidators: true })
+  const updatedAcademicYear = await AcademicYear.findByIdAndUpdate(
+    req.params.id,
+    { name, fromYear, toYear },
+    { new: true, runValidators: true }
+  );
 
   if (!updatedAcademicYear) {
     return next(new AppError("No academic year with that id !", 404))

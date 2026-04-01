@@ -12,17 +12,17 @@ const { academicTermValidationSchema, academicTermUpdateSchema } = require('../.
 
 const router = express.Router();
 
-router.use(protect, restrictTo("admin"));
+router.use(protect);
 
 router
   .route("/")
-  .post(validationFunction(academicTermValidationSchema), createAcademicTerm)
-  .get(getAcademicTerms);
+  .post(restrictTo("admin"), validationFunction(academicTermValidationSchema), createAcademicTerm)
+  .get(restrictTo("admin", "teacher", "student"), getAcademicTerms);
 
 router
   .route("/:id")
-  .get(getAcademicTerm)
-  .patch(validationFunction(academicTermUpdateSchema), updateAcademicTerm)
-  .delete(deleteAcademicTerm);
+  .get(restrictTo("admin"), getAcademicTerm)
+  .patch(restrictTo("admin"), validationFunction(academicTermUpdateSchema), updateAcademicTerm)
+  .delete(restrictTo("admin"), deleteAcademicTerm);
 
 module.exports = router;

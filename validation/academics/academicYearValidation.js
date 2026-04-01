@@ -1,5 +1,29 @@
 const Joi = require('joi');
 
+const objectIdString = Joi.string().hex().length(24);
+
+/** Accepts Date, ISO strings, or a four-digit year string (e.g. "2020"). */
+const yearOrDate = (label) =>
+  Joi.any()
+    .required()
+    .custom((value, helpers) => {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+      }
+      if (typeof value === 'string' && /^\d{4}$/.test(value)) {
+        return new Date(Date.UTC(parseInt(value, 10), 0, 1));
+      }
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) {
+        return helpers.error('any.invalid');
+      }
+      return d;
+    }, `${label} (date or YYYY)`)
+    .messages({
+      'any.required': `${label} is required`,
+      'any.invalid': `Invalid ${label} — use a date or a four-digit year`,
+    });
+
 const academicYearValidationSchema = Joi.object({
   name: Joi.string()
     .required()
@@ -7,31 +31,15 @@ const academicYearValidationSchema = Joi.object({
       'any.required': 'Academic year name is required',
     }),
 
-  fromYear: Joi.date()
-    .required()
-    .messages({
-      'any.required': 'Start date of the academic year is required',
-      'date.base': 'Invalid start date format',
-    }),
+  fromYear: yearOrDate('Start of academic year'),
 
-  toYear: Joi.date()
-    .required()
-    .messages({
-      'any.required': 'End date of the academic year is required',
-      'date.base': 'Invalid end date format',
-    }),
+  toYear: yearOrDate('End of academic year'),
 
   isCurrent: Joi.boolean().default(false),
 
-  createdBy: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'Created by admin is required',
-    }),
+  students: Joi.array().items(objectIdString).default([]),
 
-  students: Joi.array().items(Joi.string()),
-
-  teachers: Joi.array().items(Joi.string()),
+  teachers: Joi.array().items(objectIdString).default([]),
 
 }).options({ stripUnknown: true });
 

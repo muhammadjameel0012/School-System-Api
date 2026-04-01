@@ -1,5 +1,7 @@
 const Joi = require('joi');
 
+const objectIdString = Joi.string().hex().length(24);
+
 const programValidationSchema = Joi.object({
   name: Joi.string()
     .required()
@@ -17,17 +19,11 @@ const programValidationSchema = Joi.object({
 
   code: Joi.string(),
 
-  createdBy: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'Created by admin is required',
-    }),
+  teachers: Joi.array().items(objectIdString).default([]),
 
-  teachers: Joi.array().items(Joi.string()),
+  students: Joi.array().items(objectIdString).default([]),
 
-  students: Joi.array().items(Joi.string()),
-
-  subjects: Joi.array().items(Joi.string()),
+  subjects: Joi.array().items(objectIdString).default([]),
 
 }).options({ stripUnknown: true });
 

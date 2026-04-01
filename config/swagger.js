@@ -483,15 +483,20 @@ module.exports = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'fromYear', 'toYear', 'createdBy'],
+                required: ['name', 'fromYear', 'toYear'],
                 properties: {
                   name: { type: 'string' },
-                  fromYear: { type: 'string', format: 'date-time' },
-                  toYear: { type: 'string', format: 'date-time' },
+                  fromYear: {
+                    description: 'ISO date or four-digit year (e.g. 2020)',
+                    oneOf: [{ type: 'string', format: 'date-time' }, { type: 'string', pattern: '^\\d{4}$' }],
+                  },
+                  toYear: {
+                    description: 'ISO date or four-digit year (e.g. 2024)',
+                    oneOf: [{ type: 'string', format: 'date-time' }, { type: 'string', pattern: '^\\d{4}$' }],
+                  },
                   isCurrent: { type: 'boolean' },
-                  createdBy: { type: 'string' },
-                  students: { type: 'array', items: { type: 'string' } },
-                  teachers: { type: 'array', items: { type: 'string' } },
+                  students: { type: 'array', items: { type: 'string', description: 'Student ObjectId' } },
+                  teachers: { type: 'array', items: { type: 'string', description: 'Teacher ObjectId' } },
                 },
               },
             },
@@ -623,14 +628,13 @@ module.exports = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'createdBy'],
+                required: ['name'],
                 properties: {
                   name: { type: 'string' },
                   description: { type: 'string' },
-                  createdBy: { type: 'string' },
-                  students: { type: 'array', items: { type: 'string' } },
-                  subjects: { type: 'array', items: { type: 'string' } },
-                  teachers: { type: 'array', items: { type: 'string' } },
+                  students: { type: 'array', items: { type: 'string', description: 'Student ObjectId' } },
+                  subjects: { type: 'array', items: { type: 'string', description: 'Subject ObjectId' } },
+                  teachers: { type: 'array', items: { type: 'string', description: 'Teacher ObjectId' } },
                 },
               },
             },
@@ -694,16 +698,15 @@ module.exports = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'description', 'createdBy'],
+                required: ['name', 'description'],
                 properties: {
                   name: { type: 'string' },
                   description: { type: 'string' },
-                  duration: { type: 'string' },
-                  code: { type: 'string' },
-                  createdBy: { type: 'string' },
-                  teachers: { type: 'array', items: { type: 'string' } },
-                  students: { type: 'array', items: { type: 'string' } },
-                  subjects: { type: 'array', items: { type: 'string' } },
+                  duration: { type: 'string', default: '4 years' },
+                  code: { type: 'string', description: 'Optional; auto-generated if omitted' },
+                  teachers: { type: 'array', items: { type: 'string', description: 'Teacher ObjectId' } },
+                  students: { type: 'array', items: { type: 'string', description: 'Student ObjectId' } },
+                  subjects: { type: 'array', items: { type: 'string', description: 'Subject ObjectId' } },
                 },
               },
             },
@@ -1070,6 +1073,20 @@ module.exports = {
         summary: 'Toggle publish status of exam result (admin only)',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                description: 'Omit body to toggle current value, or set isPublished / publish explicitly.',
+                properties: {
+                  isPublished: { type: 'boolean' },
+                  publish: { type: 'boolean', description: 'Alias for isPublished' },
+                },
+              },
+            },
+          },
+        },
         responses: { 200: { description: 'Publish status toggled' }, 401: { description: 'Unauthorized' }, 404: { description: 'Not found' } },
       },
     },

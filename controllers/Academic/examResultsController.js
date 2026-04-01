@@ -13,7 +13,6 @@ exports.checkExamResults = asyncHandler(async (req, res, next) => {
   if (!studentFound) {
     return next(new AppError("No Student Found"))
   }
-  console.log(examResultId, req.user.id);
   //find the exam results
   const examResult = await ExamResults.findOne({
     student: studentFound.id,
@@ -28,6 +27,9 @@ exports.checkExamResults = asyncHandler(async (req, res, next) => {
     .populate("classLevel")
     .populate("academicTerm")
     .populate("academicYear");
+  if (!examResult) {
+    return next(new AppError("No exam result found", 404));
+  }
   //check if exam is published
   if (examResult.isPublished === false) {
     return next(new AppError("Exam result is not available, check out later"))
@@ -47,19 +49,24 @@ exports.getAllExamResults = asyncHandler(async (req, res, next) => {
 
 
 exports.adminToggleExamResult = asyncHandler(async (req, res, next) => {
-  //find the exam Results
   const examResult = await ExamResults.findById(req.params.id);
   if (!examResult) {
-    return next(new AppError("Exam result not foound"))
+    return next(new AppError("Exam result not found", 404));
   }
+
+  let nextPublished;
+  if (typeof req.body.isPublished === 'boolean') {
+    nextPublished = req.body.isPublished;
+  } else if (typeof req.body.publish === 'boolean') {
+    nextPublished = req.body.publish;
+  } else {
+    nextPublished = !examResult.isPublished;
+  }
+
   const publishResult = await ExamResults.findByIdAndUpdate(
     req.params.id,
-    {
-      isPublished: req.body.publish,
-    },
-    {
-      new: true,
-    }
+    { isPublished: nextPublished },
+    { new: true, runValidators: true }
   );
   sendSuccess(res, 200, 'Success', publishResult);
 });

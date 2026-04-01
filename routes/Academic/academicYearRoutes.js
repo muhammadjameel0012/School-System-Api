@@ -12,17 +12,17 @@ const validationFunction = require('../../middleware/validationFunction');
 
 const router = express.Router();
 
-router.use(protect, restrictTo('admin'));
+router.use(protect);
 
 router
   .route('/')
-  .get(getAllAcademicYears)
-  .post(validationFunction(academicYearValidationSchema), CreateAcademicYear);
+  .get(restrictTo('admin', 'teacher', 'student'), getAllAcademicYears)
+  .post(restrictTo('admin'), validationFunction(academicYearValidationSchema), CreateAcademicYear);
 
 router
   .route('/:id')
-  .get(getAcademicYear)
-  .patch(validationFunction(academicYearUpdateSchema), updateAcademicYear)
-  .delete(deleteAcademicYear);
+  .get(restrictTo('admin'), getAcademicYear)
+  .patch(restrictTo('admin'), validationFunction(academicYearUpdateSchema), updateAcademicYear)
+  .delete(restrictTo('admin'), deleteAcademicYear);
 
 module.exports = router;

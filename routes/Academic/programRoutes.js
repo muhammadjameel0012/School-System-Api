@@ -14,15 +14,15 @@ const validation = require("../../middleware/validationFunction");
 
 const router = express.Router();
 
-router.use(protect, restrictTo('admin'));
+router.use(protect);
 
 router.route("/")
-  .post(validation(programValidationSchema), createProgram)
-  .get(getAllPrograms);
+  .post(restrictTo('admin'), validation(programValidationSchema), createProgram)
+  .get(restrictTo('admin', 'teacher', 'student'), getAllPrograms);
 
 router.route("/:id")
-  .get(getProgram)
-  .patch(validation(programUpdateSchema), updateProgram)
-  .delete(deleteProgram);
+  .get(restrictTo('admin'), getProgram)
+  .patch(restrictTo('admin'), validation(programUpdateSchema), updateProgram)
+  .delete(restrictTo('admin'), deleteProgram);
 
 module.exports = router;

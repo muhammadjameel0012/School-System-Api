@@ -6,17 +6,17 @@ const validationFunction = require("../../middleware/validationFunction");
 
 const router = express.Router();
 
-router.use(protect, restrictTo('admin'))
+router.use(protect);
 
 router
   .route("/")
-  .post(validationFunction(classLevelValidationSchema), createClassLevel)
-  .get(getAllClassLevel);
+  .post(restrictTo('admin'), validationFunction(classLevelValidationSchema), createClassLevel)
+  .get(restrictTo('admin', 'teacher', 'student'), getAllClassLevel);
 
 router
   .route("/:id")
-  .get(getClassLevel)
-  .patch(validationFunction(classLevelUpdateSchema), updateClassLevel)
-  .delete(deleteClassLevel);
+  .get(restrictTo('admin'), getClassLevel)
+  .patch(restrictTo('admin'), validationFunction(classLevelUpdateSchema), updateClassLevel)
+  .delete(restrictTo('admin'), deleteClassLevel);
 
 module.exports = router;

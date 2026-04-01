@@ -1,5 +1,7 @@
 const Joi = require('joi');
 
+const objectIdString = Joi.string().hex().length(24);
+
 const classLevelValidationSchema = Joi.object({
   name: Joi.string()
     .required()
@@ -7,19 +9,13 @@ const classLevelValidationSchema = Joi.object({
       'any.required': 'Class level name is required',
     }),
 
-  description: Joi.string(),
+  description: Joi.string().allow(''),
 
-  createdBy: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'Created by admin is required',
-    }),
+  students: Joi.array().items(objectIdString).default([]),
 
-  students: Joi.array().items(Joi.string()),
+  subjects: Joi.array().items(objectIdString).default([]),
 
-  subjects: Joi.array().items(Joi.string()),
-
-  teachers: Joi.array().items(Joi.string()),
+  teachers: Joi.array().items(objectIdString).default([]),
 
 }).options({ stripUnknown: true });
 

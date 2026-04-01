@@ -5,8 +5,8 @@ const AppError = require('../../utils/appErrors');
 const { sendSuccess } = require('../../utils/response');
 
 exports.createClassLevel = asyncHandler(async (req, res, next) => {
-  const { name, description } = req.body;
-  const createdBy = req.user.id
+  const { name, description, students, subjects, teachers } = req.body;
+  const createdBy = req.user.id;
   //check if exists
   const classFound = await ClassLevel.findOne({ name });
   if (classFound) {
@@ -16,7 +16,10 @@ exports.createClassLevel = asyncHandler(async (req, res, next) => {
   const classCreated = await ClassLevel.create({
     name,
     description,
-    createdBy
+    createdBy,
+    students: students ?? [],
+    subjects: subjects ?? [],
+    teachers: teachers ?? [],
   });
   //push class into admin
   const admin = await Admin.findById(createdBy);
@@ -50,17 +53,20 @@ exports.getClassLevel = asyncHandler(async (req, res, next) => {
 
 exports.updateClassLevel = asyncHandler(async (req, res, next) => {
   const { name, description } = req.body;
-  //check name exists
-  const classFound = await ClassLevel.findOne({ name });
-  if (classFound) {
-    return next(new AppError("Class  already exists"))
+  if (name) {
+    const classFound = await ClassLevel.findOne({
+      name,
+      _id: { $ne: req.params.id },
+    });
+    if (classFound) {
+      return next(new AppError("Class  already exists"))
+    }
   }
   const classLevel = await ClassLevel.findByIdAndUpdate(
     req.params.id,
     {
       name,
       description,
-      createdBy: req.user.id,
     },
     {
       new: true,

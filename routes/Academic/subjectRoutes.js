@@ -13,14 +13,14 @@ const { subjectValidationSchema, subjectUpdateSchema } = require('../../validati
 
 const router = express.Router();
 
-router.use(protect, restrictTo('admin'));
+router.use(protect);
 
-router.post("/:programId", validationFunction(subjectValidationSchema), createSubject);
-router.get('/', getAllSubjects);
+router.post("/:programId", restrictTo('admin'), validationFunction(subjectValidationSchema), createSubject);
+router.get('/', restrictTo('admin', 'teacher', 'student'), getAllSubjects);
 
 router.route("/:id")
-  .get(getSubject)
-  .patch(validationFunction(subjectUpdateSchema), updateSubject)
-  .delete(deleteSubject);
+  .get(restrictTo('admin'), getSubject)
+  .patch(restrictTo('admin'), validationFunction(subjectUpdateSchema), updateSubject)
+  .delete(restrictTo('admin'), deleteSubject);
 
 module.exports = router;

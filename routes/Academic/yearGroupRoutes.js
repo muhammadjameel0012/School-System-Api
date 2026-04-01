@@ -13,15 +13,15 @@ const { yearGroupValidationSchema, yearGroupUpdateSchema } = require('../../vali
 
 const router = express.Router();
 
-router.use(protect, restrictTo('admin'));
+router.use(protect);
 
 router.route("/")
-  .post(validationFunction(yearGroupValidationSchema), createYearGroup)
-  .get(getAllYearGroups);
+  .post(restrictTo('admin'), validationFunction(yearGroupValidationSchema), createYearGroup)
+  .get(restrictTo('admin', 'teacher', 'student'), getAllYearGroups);
 
 router.route("/:id")
-  .get(getYearGroup)
-  .patch(validationFunction(yearGroupUpdateSchema), updateYearGroup)
-  .delete(deleteYearGroup);
+  .get(restrictTo('admin'), getYearGroup)
+  .patch(restrictTo('admin'), validationFunction(yearGroupUpdateSchema), updateYearGroup)
+  .delete(restrictTo('admin'), deleteYearGroup);
 
 module.exports = router;
