@@ -21,7 +21,7 @@ router
 
 router
   .route('/:id')
-  .get(restrictTo('admin'), getAcademicYear)
+  .get(restrictTo('admin', 'teacher', 'student'), getAcademicYear)
   .patch(restrictTo('admin'), validationFunction(academicYearUpdateSchema), updateAcademicYear)
   .delete(restrictTo('admin'), deleteAcademicYear);
 

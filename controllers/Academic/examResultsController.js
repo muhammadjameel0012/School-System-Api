@@ -5,19 +5,8 @@ const AppError = require('../../utils/appErrors');
 const { sendSuccess } = require('../../utils/response');
 
 
-exports.checkExamResults = asyncHandler(async (req, res, next) => {
-  //find the student
-  const examResultId = req.params.id
-
-  const studentFound = await Student.findById(req.user.id);
-  if (!studentFound) {
-    return next(new AppError("No Student Found"))
-  }
-  //find the exam results
-  const examResult = await ExamResults.findOne({
-    student: studentFound.id,
-    _id: examResultId,
-  })
+const populateExamResult = (query) =>
+  query
     .populate({
       path: "exam",
       populate: {
@@ -27,23 +16,50 @@ exports.checkExamResults = asyncHandler(async (req, res, next) => {
     .populate("classLevel")
     .populate("academicTerm")
     .populate("academicYear");
+
+exports.checkExamResults = asyncHandler(async (req, res, next) => {
+  const examResultId = req.params.id;
+  const role = req.user.role;
+
+  if (role === "student") {
+    const studentFound = await Student.findById(req.user.id);
+    if (!studentFound) {
+      return next(new AppError("No Student Found"));
+    }
+    const examResult = await populateExamResult(
+      ExamResults.findOne({
+        student: studentFound.id,
+        _id: examResultId,
+      })
+    );
+    if (!examResult) {
+      return next(new AppError("No exam result found", 404));
+    }
+    if (examResult.isPublished === false) {
+      return next(new AppError("Exam result is not available, check out later"));
+    }
+    return res.json({
+      status: "success",
+      data: examResult,
+      student: studentFound,
+    });
+  }
+
+  const examResult = await populateExamResult(ExamResults.findById(examResultId));
   if (!examResult) {
     return next(new AppError("No exam result found", 404));
-  }
-  //check if exam is published
-  if (examResult.isPublished === false) {
-    return next(new AppError("Exam result is not available, check out later"))
   }
   res.json({
     status: "success",
     data: examResult,
-    student: studentFound,
   });
 });
 
 
 exports.getAllExamResults = asyncHandler(async (req, res, next) => {
-  const results = await ExamResults.find().select("exam").populate("exam");
+  const filter =
+    req.user.role === "student" ? { student: req.user.id } : {};
+  const results = await ExamResults.find(filter).select("exam").populate("exam");
   sendSuccess(res, 200, 'Success', results);
 });
 
