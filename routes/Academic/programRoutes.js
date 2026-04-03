@@ -21,7 +21,7 @@ router.route("/")
   .get(restrictTo('admin', 'teacher', 'student'), getAllPrograms);
 
 router.route("/:id")
-  .get(restrictTo('admin'), getProgram)
+  .get(restrictTo('admin', 'teacher', 'student'), getProgram)
   .patch(restrictTo('admin'), validation(programUpdateSchema), updateProgram)
   .delete(restrictTo('admin'), deleteProgram);
 

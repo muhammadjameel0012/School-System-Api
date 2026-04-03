@@ -15,7 +15,7 @@ router
 
 router
   .route("/:id")
-  .get(restrictTo('admin'), getClassLevel)
+  .get(restrictTo('admin', 'teacher', 'student'), getClassLevel)
   .patch(restrictTo('admin'), validationFunction(classLevelUpdateSchema), updateClassLevel)
   .delete(restrictTo('admin'), deleteClassLevel);
 

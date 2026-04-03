@@ -8,11 +8,13 @@ const {
 
 const router = express.Router();
 
+const allRoles = restrictTo('admin', 'teacher', 'student');
+
 router.use(protect);
 
-router.get("/", restrictTo('student'), getAllExamResults);
+router.get("/", allRoles, getAllExamResults);
 
-router.get("/:id/checking", restrictTo('student'), checkExamResults);
+router.get("/:id/checking", allRoles, checkExamResults);
 
 router.patch("/:id/admin-toggle-publish", restrictTo('admin'), adminToggleExamResult);
 

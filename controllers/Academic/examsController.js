@@ -16,8 +16,11 @@ exports.createExam = asyncHandler(async (req, res, next) => {
     examDate,
     examTime,
     examType,
+    examStatus,
     academicYear,
     classLevel,
+    passMark,
+    totalMark,
   } = req.body;
 
   // Find the teacher
@@ -32,7 +35,7 @@ exports.createExam = asyncHandler(async (req, res, next) => {
     return next(new AppError("Exam already exists", 400));
   }
 
-  // Create the exam
+  // Create the exam (questions are added afterward via POST /questions/:examId)
   const newExam = await Exam.create({
     name,
     description,
@@ -43,8 +46,11 @@ exports.createExam = asyncHandler(async (req, res, next) => {
     examDate,
     examTime,
     examType,
+    examStatus: examStatus ?? 'pending',
     subject,
     program,
+    passMark: passMark ?? 50,
+    totalMark: totalMark ?? 100,
     createdBy: req.user.id,
   });
 
@@ -94,10 +100,14 @@ exports.updateExam = asyncHandler(async (req, res, next) => {
     classLevel,
   } = req.body;
 
-  // Check if exam name already exists
-  const examFound = await Exam.findOne({ name });
-  if (examFound) {
-    return next(new AppError("Exam already exists", 400));
+  if (name) {
+    const examFound = await Exam.findOne({
+      name,
+      _id: { $ne: req.params.id },
+    });
+    if (examFound) {
+      return next(new AppError("Exam already exists", 400));
+    }
   }
 
   // Update the exam
@@ -115,13 +125,16 @@ exports.updateExam = asyncHandler(async (req, res, next) => {
       examType,
       academicYear,
       classLevel,
-      createdBy: req.user.id,
     },
     {
       new: true,
       runValidators: true,
     }
   );
+
+  if (!updatedExam) {
+    return next(new AppError('No exams with that id!', 404));
+  }
 
   sendSuccess(res, 200, 'Success', { exam: updatedExam });
 });
