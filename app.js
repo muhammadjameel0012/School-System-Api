@@ -23,6 +23,7 @@ const yearGroupRouter = require('./routes/Academic/yearGroupRoutes');
 const examRouter = require('./routes/Academic/examRoutes');
 const questionRouter = require('./routes/Academic/questionRoutes');
 const examResultsRouter = require('./routes/Academic/examReusltsRoutes');
+const studentExamRouter = require('./routes/Academic/studentExamRoutes');
 
 const apiVersion = '/api/v1';
 
@@ -79,6 +80,7 @@ app.use(`${apiVersion}/year-groups`, yearGroupRouter);
 app.use(`${apiVersion}/exams`, examRouter);
 app.use(`${apiVersion}/questions`, questionRouter);
 app.use(`${apiVersion}/exam-results`, examResultsRouter);
+app.use(`${apiVersion}/student/exams`, studentExamRouter);
 
 app.all('*', (req, _, next) => {
   const err = new Error(`Can't Find ${req.originalUrl}`);

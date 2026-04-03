@@ -13,10 +13,15 @@ const validationFunction = require('../../middleware/validationFunction');
 
 const router = express.Router();
 
-router.use(protect, restrictTo('teacher'));
+const allRoles = restrictTo('admin', 'teacher', 'student');
 
-router.post("/:examId", validationFunction(questionValidationSchema), createQuestion);
-router.get("/", getAllQuestions);
-router.route('/:id').get(getQuestion).patch(validationFunction(questionUpdateSchema), updateQuestion);
+router.use(protect);
+
+router.post("/:examId", restrictTo('teacher'), validationFunction(questionValidationSchema), createQuestion);
+router.get("/", allRoles, getAllQuestions);
+router
+  .route('/:id')
+  .get(allRoles, getQuestion)
+  .patch(restrictTo('teacher'), validationFunction(questionUpdateSchema), updateQuestion);
 
 module.exports = router;

@@ -25,17 +25,9 @@ const examValidationSchema = Joi.object({
       'any.required': 'Program is required',
     }),
 
-  passMark: Joi.number()
-    .required()
-    .messages({
-      'any.required': 'Pass mark is required',
-    }),
+  passMark: Joi.number().default(50),
 
-  totalMark: Joi.number()
-    .required()
-    .messages({
-      'any.required': 'Total mark is required',
-    }),
+  totalMark: Joi.number().default(100),
 
   academicTerm: Joi.string()
     .required()
@@ -68,26 +60,12 @@ const examValidationSchema = Joi.object({
       'any.required': 'Exam type is required',
     }),
 
-  examStatus: Joi.string()
-    .valid('pending', 'live')
-    .required()
-    .messages({
-      'any.required': 'Exam status is required',
-      'string.valid': 'Invalid exam status',
-    }),
-
-  questions: Joi.array().items(Joi.string()),
+  examStatus: Joi.string().valid('pending', 'live').default('pending'),
 
   classLevel: Joi.string()
     .required()
     .messages({
       'any.required': 'Class level is required',
-    }),
-
-  createdBy: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'Created by teacher is required',
     }),
 
   academicYear: Joi.string()

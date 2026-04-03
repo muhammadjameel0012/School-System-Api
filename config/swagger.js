@@ -27,8 +27,13 @@ module.exports = {
     { name: 'Subjects', description: 'Subject CRUD' },
     { name: 'Year Groups', description: 'Year group CRUD' },
     { name: 'Exams', description: 'Exam management' },
-    { name: 'Questions', description: 'Exam questions' },
+    { name: 'Questions', description: 'Exam questions — use POST /questions/{examId} after creating an exam' },
     { name: 'Exam Results', description: 'Exam results and publishing' },
+    {
+      name: 'Student Exams',
+      description:
+        'Student-facing exam flow: list exams with attempt status, start/resume a timed attempt, save answers (A–D), submit for grading, view results and review with correct answers. Requires a student JWT.',
+    },
   ],
   paths: {
     // ==================== ADMINS ====================
@@ -905,6 +910,8 @@ module.exports = {
       post: {
         tags: ['Exams'],
         summary: 'Create exam (teacher only)',
+        description:
+          'Creates an exam **without** questions. **Do not** send question IDs here. After you receive the new exam `id`, add each question with **POST** `/api/v1/questions/{examId}`. `createdBy` is set from the JWT.',
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -912,30 +919,28 @@ module.exports = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['name', 'description', 'subject', 'program', 'passMark', 'totalMark', 'academicTerm', 'duration', 'examDate', 'examTime', 'examType', 'examStatus', 'classLevel', 'createdBy', 'academicYear'],
+                required: ['name', 'description', 'subject', 'program', 'academicTerm', 'duration', 'examDate', 'examTime', 'examType', 'classLevel', 'academicYear'],
                 properties: {
                   name: { type: 'string' },
                   description: { type: 'string' },
-                  subject: { type: 'string' },
-                  program: { type: 'string' },
-                  passMark: { type: 'number' },
-                  totalMark: { type: 'number' },
-                  academicTerm: { type: 'string' },
-                  duration: { type: 'string' },
+                  subject: { type: 'string', description: 'Subject ObjectId' },
+                  program: { type: 'string', description: 'Program ObjectId' },
+                  passMark: { type: 'number', default: 50, description: 'Optional; defaults to 50' },
+                  totalMark: { type: 'number', default: 100, description: 'Optional; defaults to 100' },
+                  academicTerm: { type: 'string', description: 'Academic term ObjectId' },
+                  duration: { type: 'string', example: '30 minutes' },
                   examDate: { type: 'string', format: 'date-time' },
                   examTime: { type: 'string' },
                   examType: { type: 'string' },
-                  examStatus: { type: 'string', enum: ['pending', 'live'] },
-                  classLevel: { type: 'string' },
-                  academicYear: { type: 'string' },
-                  createdBy: { type: 'string' },
-                  questions: { type: 'array', items: { type: 'string' } },
+                  examStatus: { type: 'string', enum: ['pending', 'live'], default: 'pending' },
+                  classLevel: { type: 'string', description: 'Class level ObjectId' },
+                  academicYear: { type: 'string', description: 'Academic year ObjectId' },
                 },
               },
             },
           },
         },
-        responses: { 201: { description: 'Exam created' }, 401: { description: 'Unauthorized' } },
+        responses: { 201: { description: 'Exam created (empty questions array)' }, 400: { description: 'Validation error' }, 401: { description: 'Unauthorized' } },
       },
     },
     [`${basePath}/exams/{id}`]: {
@@ -988,31 +993,45 @@ module.exports = {
     [`${basePath}/questions/{examId}`]: {
       post: {
         tags: ['Questions'],
-        summary: 'Create question for exam (teacher only)',
+        summary: 'Create question and attach to exam (teacher only)',
+        description:
+          '**examId** is the exam’s MongoDB id from **POST /exams** (or **GET /exams**). The new question is created and its id is appended to that exam’s `questions` array. Send only question content — **createdBy** is taken from the JWT.',
         security: [{ bearerAuth: [] }],
-        parameters: [{ name: 'examId', in: 'path', required: true, schema: { type: 'string' } }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Target exam ObjectId (must exist)',
+          },
+        ],
         requestBody: {
           required: true,
           content: {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['question', 'optionA', 'optionB', 'optionC', 'optionD', 'correctAnswer', 'createdBy'],
+                required: ['question', 'optionA', 'optionB', 'optionC', 'optionD', 'correctAnswer'],
                 properties: {
                   question: { type: 'string' },
                   optionA: { type: 'string' },
                   optionB: { type: 'string' },
                   optionC: { type: 'string' },
                   optionD: { type: 'string' },
-                  correctAnswer: { type: 'string' },
+                  correctAnswer: { type: 'string', description: 'Option text or A/B/C/D' },
                   isCorrect: { type: 'boolean' },
-                  createdBy: { type: 'string' },
                 },
               },
             },
           },
         },
-        responses: { 201: { description: 'Question created' }, 401: { description: 'Unauthorized' } },
+        responses: {
+          201: { description: 'Question created and linked to exam' },
+          400: { description: 'Validation error or duplicate question text' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'Exam not found' },
+        },
       },
     },
     [`${basePath}/questions/{id}`]: {
@@ -1088,6 +1107,202 @@ module.exports = {
           },
         },
         responses: { 200: { description: 'Publish status toggled' }, 401: { description: 'Unauthorized' }, 404: { description: 'Not found' } },
+      },
+    },
+
+    // ==================== STUDENT EXAMS ====================
+    [`${basePath}/student/exams`]: {
+      get: {
+        tags: ['Student Exams'],
+        summary: 'List exams with attempt status',
+        description:
+          'Returns all exams with per-exam **attemptStatus**: `not-started`, `in-progress`, or `completed`, and **attemptId** when an attempt document exists. Expired in-progress attempts are auto-finalized when this endpoint runs so status stays accurate.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description:
+              'Array of `{ exam, attemptStatus, attemptId }`. Response uses unified `{ status, statusCode, message, data }` with `data.exams`.',
+          },
+          401: { description: 'Unauthorized — student JWT required' },
+        },
+      },
+    },
+    [`${basePath}/student/exams/{examId}/start`]: {
+      post: {
+        tags: ['Student Exams'],
+        summary: 'Start or resume an exam attempt',
+        description:
+          'Creates a single **ExamAttempt** per student per exam (enforced in DB). If an attempt is already **in progress**, returns the same window (**resumed**: true). If the exam was already **submitted**, returns **409**. Duration is taken from the exam `duration` string (e.g. `30 minutes`) to compute **expiresAt**.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'MongoDB ObjectId of the exam',
+          },
+        ],
+        responses: {
+          201: {
+            description:
+              '`{ attemptId, startedAt, expiresAt, resumed }` — use **attemptId** for correlation; times are ISO strings in JSON.',
+          },
+          400: { description: 'Invalid id or exam has no questions' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'Exam not found' },
+          409: { description: 'Exam already submitted' },
+        },
+      },
+    },
+    [`${basePath}/student/exams/{examId}/attempt`]: {
+      get: {
+        tags: ['Student Exams'],
+        summary: 'Get attempt paper (questions without correct answers)',
+        description:
+          'Requires an active **in_progress** attempt before the timer expires (or the attempt is auto-submitted). Returns sanitized questions (no **correctAnswer**) plus **selectedOption** per question (`optionA`–`optionD`) if already saved. Overdue attempts are finalized automatically.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'MongoDB ObjectId of the exam',
+          },
+        ],
+        responses: {
+          200: {
+            description:
+              '`{ attemptId, startedAt, expiresAt, questions[] }` — each question includes **optionA**–**optionD** and optional **selectedOption** (`optionA`|`optionB`|`optionC`|`optionD`).',
+          },
+          400: { description: 'No active attempt (e.g. already submitted or expired)' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'No attempt or exam not found' },
+        },
+      },
+    },
+    [`${basePath}/student/exams/{examId}/answer`]: {
+      patch: {
+        tags: ['Student Exams'],
+        summary: 'Save or update one answer',
+        description:
+          'Upserts the answer for **questionId** on the current attempt. Send **selectedOption** as `optionA`, `optionB`, `optionC`, or `optionD` (same names as on each question). Not allowed after submit or once the attempt is auto-finalized.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'MongoDB ObjectId of the exam',
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['questionId', 'selectedOption'],
+                properties: {
+                  questionId: { type: 'string', description: 'Question ObjectId' },
+                  selectedOption: {
+                    type: 'string',
+                    enum: ['optionA', 'optionB', 'optionC', 'optionD'],
+                    description: 'Chosen option field name (matches question keys)',
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: '`{ saved, questionId, selectedOption }`' },
+          400: { description: 'Invalid body, wrong question for exam, or attempt closed' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'No attempt found' },
+        },
+      },
+    },
+    [`${basePath}/student/exams/{examId}/submit`]: {
+      post: {
+        tags: ['Student Exams'],
+        summary: 'Submit the exam attempt',
+        description:
+          'Locks the attempt, scores against question **correctAnswer** values, stores totals on the attempt, and upserts an **ExamResult** for this student and exam. Idempotent if already submitted (returns the same summary).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'MongoDB ObjectId of the exam',
+          },
+        ],
+        responses: {
+          200: {
+            description:
+              '`{ attemptId, submittedAt, score, percentage, correct, incorrect, totalQuestions, passed, passMark }`',
+          },
+          400: { description: 'Invalid state (e.g. not started)' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'No attempt' },
+        },
+      },
+    },
+    [`${basePath}/student/exams/{examId}/result`]: {
+      get: {
+        tags: ['Student Exams'],
+        summary: 'Get graded result summary',
+        description:
+          'Returns score breakdown after the attempt is **completed** (submitted manually or auto-submitted when time expired).',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'MongoDB ObjectId of the exam',
+          },
+        ],
+        responses: {
+          200: {
+            description:
+              'Same shape as submit response: score, percentage, correct/incorrect counts, pass/fail.',
+          },
+          400: { description: 'Attempt not submitted yet' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'No attempt' },
+        },
+      },
+    },
+    [`${basePath}/student/exams/{examId}/review`]: {
+      get: {
+        tags: ['Student Exams'],
+        summary: 'Review attempt with correct answers',
+        description:
+          'After submit, returns each question with **selectedOption**, **correctOption** (`optionA`–`optionD`), and **isCorrect**, plus a **summary** object matching the result endpoint. Not available until the attempt is completed.',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: 'examId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' },
+            description: 'MongoDB ObjectId of the exam',
+          },
+        ],
+        responses: {
+          200: {
+            description: '`{ attemptId, summary, questions[] }` with per-question review fields',
+          },
+          400: { description: 'Exam not submitted yet' },
+          401: { description: 'Unauthorized' },
+          404: { description: 'No attempt' },
+        },
       },
     },
   },
