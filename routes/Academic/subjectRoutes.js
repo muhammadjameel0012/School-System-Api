@@ -19,7 +19,7 @@ router.post("/:programId", restrictTo('admin'), validationFunction(subjectValida
 router.get('/', restrictTo('admin', 'teacher', 'student'), getAllSubjects);
 
 router.route("/:id")
-  .get(restrictTo('admin'), getSubject)
+  .get(restrictTo('admin', 'teacher', 'student'), getSubject)
   .patch(restrictTo('admin'), validationFunction(subjectUpdateSchema), updateSubject)
   .delete(restrictTo('admin'), deleteSubject);
 

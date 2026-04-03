@@ -39,12 +39,6 @@ const questionValidationSchema = Joi.object({
 
   isCorrect: Joi.boolean().default(false),
 
-  createdBy: Joi.string()
-    .required()
-    .messages({
-      'any.required': 'Created by teacher is required',
-    }),
-
 }).options({ stripUnknown: true });
 
 const questionUpdateSchema = Joi.object({

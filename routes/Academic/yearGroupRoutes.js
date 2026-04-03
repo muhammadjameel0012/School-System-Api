@@ -20,7 +20,7 @@ router.route("/")
   .get(restrictTo('admin', 'teacher', 'student'), getAllYearGroups);
 
 router.route("/:id")
-  .get(restrictTo('admin'), getYearGroup)
+  .get(restrictTo('admin', 'teacher', 'student'), getYearGroup)
   .patch(restrictTo('admin'), validationFunction(yearGroupUpdateSchema), updateYearGroup)
   .delete(restrictTo('admin'), deleteYearGroup);
 

@@ -12,14 +12,16 @@ const validationFunction = require("../../middleware/validationFunction");
 
 const router = express.Router();
 
-router.use(protect, restrictTo('teacher'));
+const allRoles = restrictTo('admin', 'teacher', 'student');
+
+router.use(protect);
 
 router.route("/")
-  .post(validationFunction(examValidationSchema), createExam)
-  .get(getAllExams);
+  .post(restrictTo('teacher'), validationFunction(examValidationSchema), createExam)
+  .get(allRoles, getAllExams);
 
 router.route("/:id")
-  .get(getExam)
-  .patch(validationFunction(examUpdateSchema), updateExam);
+  .get(allRoles, getExam)
+  .patch(restrictTo('teacher'), validationFunction(examUpdateSchema), updateExam);
 
 module.exports = router;
